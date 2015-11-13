@@ -7,7 +7,6 @@ Created on Aug 16, 2015
 from sklearn.ensemble.gradient_boosting import GradientBoostingRegressor
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.preprocessing.data import MinMaxScaler
-from sklearn.svm.libsvm import predict_proba
 from sklearn.ensemble.forest import RandomForestClassifier, RandomForestRegressor
 from math import sqrt
 
@@ -15,6 +14,7 @@ from estimators import boundary_forest as bt
 from transformers import feature_selection as fs
 from transformers import feature_extraction as fe
 from sklearn.tree.tree import DecisionTreeRegressor
+from sklearn import multiclass as skmult
 
 if __name__ == '__main__':
     pass
@@ -52,11 +52,12 @@ import sklearn.pipeline as skpipe
 import sklearn.decomposition as skdec
 import sklearn.naive_bayes as skbayes
 import sklearn.semi_supervised as sksemi
+import sklearn.cross_validation as skcross
 
 MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
 
-datasetName = 'Processors'
-datasetFmt = '%i,%f' #' + (',%f' * 39) #Output file format assumes one row per test case. For categorical integer values use '%i' otherwise '%f'
+datasetName = 'Sleep'
+datasetFmt = '%i,%i'#Output file format assumes one row per test case. For categorical integer values use '%i' otherwise '%f'
 
 datasetTrain = datasetName + '_train.csv'
 datasetTest = datasetName + '_validate_and_test.csv'
@@ -130,7 +131,7 @@ def read_csv_features_label(inpath):
         reader = csv.reader(fin, delimiter=',')
         for row in reader:
             X.append([float(x) for x in row[1:-1]])
-            Y.append([float(row[-1])])
+            Y.append([int(float(row[-1]))])
     X = np.atleast_2d(X)
     Y = np.atleast_2d(Y)
     return (X, Y[:,0])#Return (features, labels)
@@ -216,37 +217,35 @@ supportVectorClassifier = svm.SVC(probability=True, verbose=True)
 linearSupportVectorClassifier = svm.LinearSVC(dual=False)
 nearestNeighborClassifier = nn.KNeighborsClassifier()
 extraTreesClassifier = sken.ExtraTreesClassifier(n_estimators=256)
-baggingClassifier = sken.BaggingClassifier(base_estimator=sken.GradientBoostingClassifier(n_estimators=300,max_features=4), max_features=0.5,n_jobs=2, verbose=1)
-gradientBoostingClassifier = sken.GradientBoostingClassifier(n_estimators=30, max_features=4, learning_rate=0.1, verbose=1)
+baggingClassifier = sken.BaggingClassifier(base_estimator=sken.GradientBoostingClassifier(n_estimators=200,max_features=4), max_features=0.5,n_jobs=2, verbose=1)
+gradientBoostingClassifier = sken.GradientBoostingClassifier(n_estimators=30, max_features=4, learning_rate=0.1, verbose=0)
 randomForestClassifier = sken.RandomForestClassifier(n_estimators=2)
 logisticClassifier = sklin.LogisticRegression(C=80)
 ridgeClassifier = sklin.RidgeClassifier(alpha=0.1, solver='svd')
 bayes = skbayes.MultinomialNB()
 sgd = sklin.SGDClassifier(loss = 'log', penalty='elasticnet', shuffle=True, n_jobs=1)
 sgdn = sklin.SGDClassifier(loss = 'hinge', penalty='l1', n_jobs=1)
-boundary_forest = bt.BoundaryForest(num_trees=4)
+boundary_forest = bt.BoundaryForestClassifier(num_trees=4)
 
 
 # FEATURE UNION
 featureUnion = skpipe.FeatureUnion(transformer_list=[('PCA', pca)])
 
-prepDeleter = fs.FeatureDeleter(feature_id=[2,4,6,10,11,12,13])
 
 # PIPE DEFINITION
-classifier = skpipe.Pipeline(steps=[('features are awesome', fe.FeatureMultiplier(left=1, right=13)),('feature logarithms',fe.FeatureLogarithmic(feature_id=[13])),('feature_selection',prepDeleter),\
-                                    ('estimator', sken.BaggingRegressor(n_estimators=64,base_estimator=sken.RandomForestRegressor(n_estimators=4)))])
+classifier = skpipe.Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', sken.RandomForestClassifier())])
 print ('Successfully prepared classifier pipeline!')
 
-#'estimator', sken.BaggingRegressor(n_estimators=64,base_estimator=sken.RandomForestRegressor(n_estimators=16))
 
 #X = np.vstack((X,np.roll(X,1),np.roll(X,-1),np.roll(X,28),np.roll(X,-28)))
 #Y = np.hstack((Y,Y,Y,Y,Y))
-#print 'X and Y shapes ', X.shape, ' ', Y.shape
+#print 'X and Y shapes ', X.shape, ' ', Y.shapee
 
 RMSE = skmet.make_scorer(rootMeanSquaredError, greater_is_better = False)
+categoricalAccuracyScorer = skmet.make_scorer(skmet.accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifierSearcher = GridSearchCV(classifier, dict(estimator__n_estimators=[256]), cv=4, scoring=RMSE, n_jobs=2, verbose=2)
+classifierSearcher = GridSearchCV(classifier, dict(estimator__n_estimators=[64,256]), cv=skcross.ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categoricalAccuracyScorer, n_jobs=2, verbose=1)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifierSearcher.fit(X, Y)
@@ -258,7 +257,7 @@ print ('Grid search results')
 for values in classifierSearcher.grid_scores_:
     squaredSum = count = 0
     for result in values[2]:
-        squaredSum += (values[1] -result) * (values[1] - result)
+        squaredSum += (values[1] - result) * (values[1] - result)
         count += 1
     stdDev = sqrt(squaredSum/count)
     print (values[0], "mean:", values[1], "std deviation:", stdDev, "m-s:", values[1]-stdDev)
@@ -282,5 +281,5 @@ print ('classifier pipe is predicting result of test data')
 Ypred = classifier.predict(testX)
 print('Ypred shape', Ypred.shape)
 print('predicted result', datasetName + '_result.csv')
-IDs = np.arange(668,1001)
+IDs = np.arange(2026,2701)
 np.savetxt(datasetName + '_result.csv', np.column_stack((IDs,Ypred)), delimiter=',', fmt=datasetFmt)
