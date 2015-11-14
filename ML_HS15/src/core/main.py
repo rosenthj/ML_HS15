@@ -45,8 +45,7 @@ import sklearn.feature_selection as skfs
 # Provides access to ensemble based classification and regression.
 import sklearn.ensemble as sken
 import sklearn.tree as sktree
-import sklearn.neighbors as nn
-import sklearn as scikit
+from sklearn.neighbors import *
 import sklearn.preprocessing as skprep
 import sknn.mlp as skneural
 import sklearn.cluster as cluster
@@ -173,7 +172,7 @@ supportVectorRegressor = svm.SVR()
 # CLASSIFIERS
 supportVectorClassifier = svm.SVC(probability=True, verbose=True)
 linearSupportVectorClassifier = svm.LinearSVC(dual=False)
-nearestNeighborClassifier = nn.KNeighborsClassifier()
+nearestNeighborClassifier = KNeighborsClassifier()
 extraTreesClassifier = sken.ExtraTreesClassifier(n_estimators=256)
 baggingClassifier = sken.BaggingClassifier(base_estimator=sken.GradientBoostingClassifier(n_estimators=200,max_features=4), max_features=0.5,n_jobs=2, verbose=1)
 gradientBoostingClassifier = sken.GradientBoostingClassifier(n_estimators=30, max_features=4, learning_rate=0.1, verbose=0)
@@ -191,7 +190,7 @@ featureUnion = skpipe.FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = skpipe.Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', nn.KNeighborsClassifier(algorithm='brute',weights='distance',p=1))])
+classifier = skpipe.Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', KNeighborsClassifier(algorithm='brute',weights='distance',p=1))])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -225,7 +224,7 @@ print ('fitting classifier pipeline on training data')
 classifier.fit(X, Y)
 
 print ('loading test data')
-testX = data_handling.read_csv_features(datasetTest)
+testX = data_handling.read_features(datasetTest)
 #testX = normalizer.transform(testX)
 print ('Shape of testX:', testX.shape)
 

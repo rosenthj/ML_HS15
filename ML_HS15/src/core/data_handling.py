@@ -59,3 +59,7 @@ def read_features_labels(inpath, fmt="csv"):
 def read_labels(inpath, fmt="csv"):
     if fmt=="csv": return _read_csv_labels(inpath)
     if fmt=="h5": return _read_h5labels(inpath)
+    
+def read_features(inpath, fmt="csv"):
+    if fmt=="csv": return _read_csv_features(inpath)
+    if fmt=="h5": return _read_h5data(inpath)
