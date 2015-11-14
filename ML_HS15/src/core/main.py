@@ -4,56 +4,41 @@ Created on Aug 16, 2015
 @author: jonathan
 '''
 
-from sklearn.ensemble.gradient_boosting import GradientBoostingRegressor
-from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-from sklearn.preprocessing.data import MinMaxScaler
-from sklearn.ensemble.forest import RandomForestClassifier, RandomForestRegressor
 from math import sqrt
+from sklearn.grid_search import GridSearchCV
+from sklearn.neighbors.classification import KNeighborsClassifier
+from sklearn.preprocessing.data import MinMaxScaler
 
+from core.data_handling import read_features_labels, read_features
 from estimators import boundary_forest as bt
+import numpy as np
+import sklearn.cross_validation as skcross
+import sklearn.decomposition as skdec
+import sklearn.ensemble as sken
+import sklearn.feature_selection as skfs
+import sklearn.linear_model as sklin
+import sklearn.metrics as skmet
+import sklearn.naive_bayes as skbayes
+import sklearn.pipeline as skpipe
+import sklearn.preprocessing as skprep
+import sklearn.svm as svm
 from transformers import feature_selection as fs
-from transformers import feature_extraction as fe
-from sklearn.tree.tree import DecisionTreeRegressor
-from sklearn import multiclass as skmult
-from core import data_handling
+
 
 if __name__ == '__main__':
     pass
 
-import sklearn.svm as svm
 # Provides Matlab-style matrix operations
-import numpy as np
 # Provides Matlab-style plotting
-import matplotlib.pylab as plt
 # For reading and writing csv files
-import csv
 # For parsing date/time strings
-import datetime as dtime
 # For parsing .h5 file format
-import h5py
 # Contains linear models, e.g., linear regression, ridge regression, LASSO, etc.
-import sklearn.linear_model as sklin
 # Allows us to create custom scoring functions
-import sklearn.metrics as skmet
 # Provides train-test split, cross-validation, etc.
-import sklearn.cross_validation as skcv
 # Provides grid search functionality
-import sklearn.grid_search as skgs
-import sklearn.feature_extraction as skfe
 # Provides feature selection functionality
-import sklearn.feature_selection as skfs
 # Provides access to ensemble based classification and regression.
-import sklearn.ensemble as sken
-import sklearn.tree as sktree
-from sklearn.neighbors import *
-import sklearn.preprocessing as skprep
-import sknn.mlp as skneural
-import sklearn.cluster as cluster
-import sklearn.pipeline as skpipe
-import sklearn.decomposition as skdec
-import sklearn.naive_bayes as skbayes
-import sklearn.semi_supervised as sksemi
-import sklearn.cross_validation as skcross
 
 MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
 
@@ -124,7 +109,7 @@ print('loading training data')
 
 #print('loading training labels')
 #Y = read_labels('train_y.csv')
-X, Y = data_handling.read_features_labels(datasetTrain)
+X, Y = read_features_labels(datasetTrain)
 print('first row X: ', X[0], ' Y: ' , Y[0])
 
 print('Shape of X:', X.shape)
@@ -199,19 +184,19 @@ print ('Successfully prepared classifier pipeline!')
 #print 'X and Y shapes ', X.shape, ' ', Y.shapee
 
 RMSE = skmet.make_scorer(rootMeanSquaredError, greater_is_better = False)
-categoricalAccuracyScorer = skmet.make_scorer(skmet.accuracy_score, greater_is_better = True)
+categorical_accuracy_scorer = skmet.make_scorer(skmet.accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifierSearcher = GridSearchCV(classifier, dict(estimator__n_neighbors=np.arange(3,8)), cv=skcross.ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categoricalAccuracyScorer, n_jobs=2, verbose=1)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__n_neighbors=np.arange(3,8)), cv=skcross.ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
-classifierSearcher.fit(X, Y)
-print ('best estimator by mean:', classifierSearcher.best_estimator_)
-print ('best score:', classifierSearcher.best_score_)
-classifier = classifierSearcher.best_estimator_
+classifier_searcher.fit(X, Y)
+print ('best estimator by mean:', classifier_searcher.best_estimator_)
+print ('best score:', classifier_searcher.best_score_)
+classifier = classifier_searcher.best_estimator_
 
 print ('Grid search results')
-for values in classifierSearcher.grid_scores_:
+for values in classifier_searcher.grid_scores_:
     squaredSum = count = 0
     for result in values[2]:
         squaredSum += (values[1] - result) * (values[1] - result)
@@ -224,7 +209,7 @@ print ('fitting classifier pipeline on training data')
 classifier.fit(X, Y)
 
 print ('loading test data')
-testX = data_handling.read_features(datasetTest)
+testX = read_features(datasetTest)
 #testX = normalizer.transform(testX)
 print ('Shape of testX:', testX.shape)
 

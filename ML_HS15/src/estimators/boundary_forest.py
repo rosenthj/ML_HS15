@@ -87,21 +87,21 @@ def set_weights(X,y, iterations = 100):
             learning_rate = (learning_rate + 1)/2
         old_error = current_error
         for w in range(0, X.shape[1]):
-            min = _BoundaryTree()
-            max = _BoundaryTree()
+            _min = _BoundaryTree()
+            _max = _BoundaryTree()
             _weights[w] = _weights[w]/learning_rate
-            min.fit(trainX, trainY)
+            _min.fit(trainX, trainY)
             min_error = _mse(min.transform(testX), testY)
             _weights[w] = _weights[w] * learning_rate * learning_rate
-            max.fit(trainX, trainY)
+            _max.fit(trainX, trainY)
             max_error = _mse(max.transform(testX), testY)
             if (min_error < max_error and min_error < current_error):
                 current_error = min_error
-                current = min
+                current = _min
                 _weights[w] = _weights[w] / learning_rate / learning_rate
             elif (max_error < current_error and max_error < min_error):
                 current_error = max_error
-                current = max
+                current = _max
             else:
                 _weights[w] = _weights[w] / learning_rate             
             

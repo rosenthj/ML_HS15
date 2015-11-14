@@ -15,7 +15,7 @@ def get_unlabeled(x, y):
 def get_labeled(x, y):
     return x[y[:]!=-1], y[y[:]!=-1]
 
-def _read_csv_features_label(inpath):
+def _read_csv_features_labels(inpath):
     X = []
     Y = []
     with open(inpath, 'r') as fin:
@@ -53,7 +53,7 @@ def _read_h5labels(inpath):
     return np.squeeze(np.asarray(f["label"]))
 
 def read_features_labels(inpath, fmt="csv"):
-    if fmt=="csv": return _read_csv_features_label(inpath)
+    if fmt=="csv": return _read_csv_features_labels(inpath)
     if fmt=="h5": return _read_h5data(inpath), _read_h5labels(inpath)
     
 def read_labels(inpath, fmt="csv"):
