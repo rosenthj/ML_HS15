@@ -5,22 +5,34 @@ Created on Aug 16, 2015
 '''
 
 from math import sqrt
+from sklearn.cross_validation import ShuffleSplit
+from sklearn.decomposition.kernel_pca import KernelPCA
+from sklearn.decomposition.nmf import NMF
+from sklearn.decomposition.pca import PCA, RandomizedPCA
+from sklearn.decomposition.sparse_pca import SparsePCA
+from sklearn.ensemble.bagging import BaggingClassifier
+from sklearn.ensemble.forest import RandomForestRegressor, ExtraTreesClassifier, \
+    RandomForestClassifier
+from sklearn.ensemble.gradient_boosting import GradientBoostingRegressor, \
+    GradientBoostingClassifier
+from sklearn.feature_selection.univariate_selection import SelectPercentile, \
+    f_classif, SelectKBest
+from sklearn.feature_selection.variance_threshold import VarianceThreshold
 from sklearn.grid_search import GridSearchCV
+from sklearn.linear_model.logistic import LogisticRegression
+from sklearn.linear_model.ridge import RidgeClassifier
+from sklearn.linear_model.stochastic_gradient import SGDClassifier
+from sklearn.metrics.classification import accuracy_score
+from sklearn.metrics.metrics import mean_squared_error
+from sklearn.metrics.scorer import make_scorer
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors.classification import KNeighborsClassifier
+from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
 
 from core.data_handling import read_features_labels, read_features
-from estimators import boundary_forest as bt
+from estimators.boundary_forest import BoundaryForestClassifier
 import numpy as np
-import sklearn.cross_validation as skcross
-import sklearn.decomposition as skdec
-import sklearn.ensemble as sken
-import sklearn.feature_selection as skfs
-import sklearn.linear_model as sklin
-import sklearn.metrics as skmet
-import sklearn.naive_bayes as skbayes
-import sklearn.pipeline as skpipe
-import sklearn.preprocessing as skprep
 import sklearn.svm as svm
 from transformers import feature_selection as fs
 
@@ -99,7 +111,7 @@ def singleLabelLogScore(gtruth, pred):
     return np.mean(map(labelLogScore,gtruth, pred))
 
 def rootMeanSquaredError(gtruth, pred):
-    squaredError = skmet.mean_squared_error(gtruth, pred)
+    squaredError = mean_squared_error(gtruth, pred)
     return np.sqrt(squaredError)
 
 #normalizer = skprep.Normalizer()
@@ -128,54 +140,53 @@ print('Shape of Y:', Y.shape)
 # print('first row: ', Y[0])
 
 # SCORER
-scorer = skmet.make_scorer(score_func=singleLabelScore, greater_is_better=False)
+scorer = make_scorer(score_func=singleLabelScore, greater_is_better=False)
 
 # PREPROCESSING
 # SCALING
-minMaxScaler = skprep.MinMaxScaler(feature_range=(0.0,1.0))
+minMaxScaler = MinMaxScaler(feature_range=(0.0,1.0))
 #normalizer = skprep.Normalizer()
 columnDeleter = fs.FeatureDeleter()
 
 # FEATURE SELECTION
-varianceThresholdSelector = skfs.VarianceThreshold(threshold=(0))
-percentileSelector = skfs.SelectPercentile(score_func=skfs.f_classif, percentile=20)
-kBestSelector = skfs.SelectKBest(skfs.f_classif, 1000)
+varianceThresholdSelector = VarianceThreshold(threshold=(0))
+percentileSelector = SelectPercentile(score_func=f_classif, percentile=20)
+kBestSelector = SelectKBest(f_classif, 1000)
 
 # FEATURE EXTRACTION
 #rbmPipe = skpipe.Pipeline(steps=[('scaling', minMaxScaler), ('rbm', rbm)])
-nmf = skdec.NMF(n_components=150)
-pca = skdec.PCA(n_components=80)
-sparsePCA = skdec.SparsePCA(n_components=700, max_iter=3, verbose=2)
-kernelPCA = skdec.KernelPCA(n_components=150)# Costs huge amounts of ram
-randomizedPCA= skdec.RandomizedPCA(n_components=500)
+nmf = NMF(n_components=150)
+pca = PCA(n_components=80)
+sparse_pca = SparsePCA(n_components=700, max_iter=3, verbose=2)
+kernel_pca = KernelPCA(n_components=150)# Costs huge amounts of ram
+randomized_pca= RandomizedPCA(n_components=500)
 
 # REGRESSORS
-randomForestRegressor = sken.RandomForestRegressor(n_estimators=256)
-gradientBoostingRegressor = sken.GradientBoostingRegressor(n_estimators=60)
-supportVectorRegressor = svm.SVR()
+random_forest_regressor = RandomForestRegressor(n_estimators=256)
+gradient_boosting_regressor = GradientBoostingRegressor(n_estimators=60)
+support_vector_regressor = svm.SVR()
 
 # CLASSIFIERS
-supportVectorClassifier = svm.SVC(probability=True, verbose=True)
-linearSupportVectorClassifier = svm.LinearSVC(dual=False)
-nearestNeighborClassifier = KNeighborsClassifier()
-extraTreesClassifier = sken.ExtraTreesClassifier(n_estimators=256)
-baggingClassifier = sken.BaggingClassifier(base_estimator=sken.GradientBoostingClassifier(n_estimators=200,max_features=4), max_features=0.5,n_jobs=2, verbose=1)
-gradientBoostingClassifier = sken.GradientBoostingClassifier(n_estimators=30, max_features=4, learning_rate=0.1, verbose=0)
-randomForestClassifier = sken.RandomForestClassifier(n_estimators=2)
-logisticClassifier = sklin.LogisticRegression(C=80)
-ridgeClassifier = sklin.RidgeClassifier(alpha=0.1, solver='svd')
-bayes = skbayes.MultinomialNB()
-sgd = sklin.SGDClassifier(loss = 'log', penalty='elasticnet', shuffle=True, n_jobs=1)
-sgdn = sklin.SGDClassifier(loss = 'hinge', penalty='l1', n_jobs=1)
-boundary_forest = bt.BoundaryForestClassifier(num_trees=4)
+support_vector_classifier = svm.SVC(probability=True, verbose=True)
+linear_support_vector_classifier = svm.LinearSVC(dual=False)
+nearest_neighbor_classifier = KNeighborsClassifier()
+extra_trees_classifier = ExtraTreesClassifier(n_estimators=256)
+bagging_classifier = BaggingClassifier(base_estimator=GradientBoostingClassifier(n_estimators=200,max_features=4), max_features=0.5,n_jobs=2, verbose=1)
+gradient_boosting_classifier = GradientBoostingClassifier(n_estimators=30, max_features=4, learning_rate=0.1, verbose=0)
+random_forest_classifier = RandomForestClassifier(n_estimators=2)
+logistic_regression = LogisticRegression(C=80)
+ridge_classifier = RidgeClassifier(alpha=0.1, solver='svd')
+bayes = MultinomialNB()
+sgd = SGDClassifier()
+boundary_forest = BoundaryForestClassifier(num_trees=4)
 
 
 # FEATURE UNION
-featureUnion = skpipe.FeatureUnion(transformer_list=[('PCA', pca)])
+feature_union = FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = skpipe.Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', KNeighborsClassifier(algorithm='brute',weights='distance',p=1))])
+classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', KNeighborsClassifier(algorithm='brute',weights='distance',p=1))])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -183,11 +194,11 @@ print ('Successfully prepared classifier pipeline!')
 #Y = np.hstack((Y,Y,Y,Y,Y))
 #print 'X and Y shapes ', X.shape, ' ', Y.shapee
 
-RMSE = skmet.make_scorer(rootMeanSquaredError, greater_is_better = False)
-categorical_accuracy_scorer = skmet.make_scorer(skmet.accuracy_score, greater_is_better = True)
+RMSE = make_scorer(rootMeanSquaredError, greater_is_better = False)
+categorical_accuracy_scorer = make_scorer(accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifier_searcher = GridSearchCV(classifier, dict(estimator__n_neighbors=np.arange(3,8)), cv=skcross.ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__n_neighbors=np.arange(3,8)), cv=ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifier_searcher.fit(X, Y)
