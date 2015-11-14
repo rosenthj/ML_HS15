@@ -15,6 +15,7 @@ from transformers import feature_selection as fs
 from transformers import feature_extraction as fe
 from sklearn.tree.tree import DecisionTreeRegressor
 from sklearn import multiclass as skmult
+from core import data_handling
 
 if __name__ == '__main__':
     pass
@@ -45,6 +46,7 @@ import sklearn.feature_selection as skfs
 import sklearn.ensemble as sken
 import sklearn.tree as sktree
 import sklearn.neighbors as nn
+import sklearn as scikit
 import sklearn.preprocessing as skprep
 import sknn.mlp as skneural
 import sklearn.cluster as cluster
@@ -116,50 +118,6 @@ def rootMeanSquaredError(gtruth, pred):
     squaredError = skmet.mean_squared_error(gtruth, pred)
     return np.sqrt(squaredError)
 
-#get labeled and unlabeled are legacy from a semisupervised problem.
-def get_unlabeled(x, y):
-    return x[y[:]==-1], y[y[:]==-1]
-
-def get_labeled(x, y):
-    return x[y[:]!=-1], y[y[:]!=-1]
-
-
-def read_csv_features_label(inpath):
-    X = []
-    Y = []
-    with open(inpath, 'r') as fin:
-        reader = csv.reader(fin, delimiter=',')
-        for row in reader:
-            X.append([float(x) for x in row[1:-1]])
-            Y.append([int(float(row[-1]))])
-    X = np.atleast_2d(X)
-    Y = np.atleast_2d(Y)
-    return (X, Y[:,0])#Return (features, labels)
-
-def read_csv_features(inpath):
-    X = []
-    with open(inpath, 'r') as fin:
-        reader = csv.reader(fin, delimiter=',')
-        for row in reader:
-            X.append([float(x) for x in row[1:]])
-    return np.atleast_2d(X)
-
-def read_labels(inpath):
-    X = []
-    with open(inpath, 'r') as fin:
-        reader = csv.reader(fin, delimiter=',')
-        for row in reader:
-            X.append([int(x) for x in row])
-    return np.atleast_1d(np.concatenate(X))
-
-#For h5 data format
-def read_h5data(inpath):
-    return h5py.File(inpath, "r")["data"][...]
-
-def read_h5labels(inpath):
-    f = h5py.File(inpath, "r")
-    return np.squeeze(np.asarray(f["label"]))
-
 #normalizer = skprep.Normalizer()
 print('loading training data')
 #X = read_data('train.csv')
@@ -167,7 +125,7 @@ print('loading training data')
 
 #print('loading training labels')
 #Y = read_labels('train_y.csv')
-X, Y = read_csv_features_label(datasetTrain)
+X, Y = data_handling.read_features_labels(datasetTrain)
 print('first row X: ', X[0], ' Y: ' , Y[0])
 
 print('Shape of X:', X.shape)
@@ -233,7 +191,7 @@ featureUnion = skpipe.FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = skpipe.Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', sken.RandomForestClassifier())])
+classifier = skpipe.Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', nn.KNeighborsClassifier(algorithm='brute',weights='distance',p=1))])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -245,7 +203,7 @@ RMSE = skmet.make_scorer(rootMeanSquaredError, greater_is_better = False)
 categoricalAccuracyScorer = skmet.make_scorer(skmet.accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifierSearcher = GridSearchCV(classifier, dict(estimator__n_estimators=[64,256]), cv=skcross.ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categoricalAccuracyScorer, n_jobs=2, verbose=1)
+classifierSearcher = GridSearchCV(classifier, dict(estimator__n_neighbors=np.arange(3,8)), cv=skcross.ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categoricalAccuracyScorer, n_jobs=2, verbose=1)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifierSearcher.fit(X, Y)
@@ -267,7 +225,7 @@ print ('fitting classifier pipeline on training data')
 classifier.fit(X, Y)
 
 print ('loading test data')
-testX = read_csv_features(datasetTest)
+testX = data_handling.read_csv_features(datasetTest)
 #testX = normalizer.transform(testX)
 print ('Shape of testX:', testX.shape)
 
