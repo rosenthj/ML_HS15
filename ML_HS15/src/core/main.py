@@ -5,6 +5,7 @@ Created on Aug 16, 2015
 '''
 
 from math import sqrt
+from numpy import hstack
 from sklearn.cross_validation import ShuffleSplit
 from sklearn.decomposition.kernel_pca import KernelPCA
 from sklearn.decomposition.nmf import NMF
@@ -23,44 +24,35 @@ from sklearn.linear_model.logistic import LogisticRegression
 from sklearn.linear_model.ridge import RidgeClassifier
 from sklearn.linear_model.stochastic_gradient import SGDClassifier
 from sklearn.metrics.classification import accuracy_score
-from sklearn.metrics.metrics import mean_squared_error
+from sklearn.metrics.regression import mean_squared_error
 from sklearn.metrics.scorer import make_scorer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors.classification import KNeighborsClassifier
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
+from sklearn.svm.classes import SVC
 
-from core.data_handling import read_features_labels, read_features,\
+from core.data_handling import read_features_labels, read_features, \
     load_previous_predictions
 from estimators.boundary_forest import BoundaryForestClassifier
 import numpy as np
 import sklearn.svm as svm
 from transformers import feature_selection as fs
-from numpy import hstack
 
 
 if __name__ == '__main__':
     pass
 
-# Provides Matlab-style matrix operations
-# Provides Matlab-style plotting
-# For reading and writing csv files
-# For parsing date/time strings
-# For parsing .h5 file format
-# Contains linear models, e.g., linear regression, ridge regression, LASSO, etc.
-# Allows us to create custom scoring functions
-# Provides train-test split, cross-validation, etc.
-# Provides grid search functionality
-# Provides feature selection functionality
-# Provides access to ensemble based classification and regression.
-
-MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
 
 datasetName = 'Sleep'
 datasetFmt = '%i,%i'#Output file format assumes one row per test case. For categorical integer values use '%i' otherwise '%f'
-
 datasetTrain = datasetName + '_train.csv'
 datasetTest = datasetName + '_validate_and_test.csv'
+
+use_model_stacking = True
+model_stacking_models = ['rf','knn','logreg','svm']
+
+MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
 
 #Returns day of week
 def get_weekday(y, m, d):
@@ -124,7 +116,7 @@ print('loading training data')
 #print('loading training labels')
 #Y = read_labels('train_y.csv')
 X, Y = read_features_labels(datasetTrain)
-X = hstack([X,load_previous_predictions(datasetName, ['rf','knn','logreg'])[0]])
+if use_model_stacking: X = hstack([X,load_previous_predictions(datasetName, model_stacking_models)[0]])
 print('first row X: ', X[0], ' Y: ' , Y[0])
 
 print('Shape of X:', X.shape)
@@ -189,7 +181,7 @@ feature_union = FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', RandomForestClassifier())])
+classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', LogisticRegression())])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -201,7 +193,7 @@ RMSE = make_scorer(rootMeanSquaredError, greater_is_better = False)
 categorical_accuracy_scorer = make_scorer(accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifier_searcher = GridSearchCV(classifier, dict(estimator__n_estimators=[128]), cv=ShuffleSplit(2025,n_iter=1000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__C=[0.05,0.1,0.3,0.5,0.8],estimator__penalty=['l1']), cv=ShuffleSplit(2025,n_iter=4000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifier_searcher.fit(X, Y)
@@ -224,8 +216,7 @@ classifier.fit(X, Y)
 
 print ('loading test data')
 testX = read_features(datasetTest)
-testX = hstack([testX,load_previous_predictions(datasetName, ['rf','knn','logreg'])[1]])
-#testX = normalizer.transform(testX)
+if use_model_stacking: testX = hstack([testX,load_previous_predictions(datasetName, model_stacking_models)[1]])
 print ('Shape of testX:', testX.shape)
 
 # print ('classifier pipe is predicting result of validation data')
