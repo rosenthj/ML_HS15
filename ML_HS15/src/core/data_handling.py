@@ -7,6 +7,7 @@ Created on Nov 14, 2015
 import numpy as np
 import csv
 import h5py
+from numpy import hstack
 
 #get labeled and unlabeled are legacy from a semisupervised problem.
 def get_unlabeled(x, y):
@@ -63,3 +64,24 @@ def read_labels(inpath, fmt="csv"):
 def read_features(inpath, fmt="csv"):
     if fmt=="csv": return _read_csv_features(inpath)
     if fmt=="h5": return _read_h5data(inpath)
+    
+def load_previous_predictions(dataset_name, predictions):
+    train_sets = []
+    test_sets = []
+    for solution in predictions:
+        X = []
+        inpath = dataset_name + '_' + solution + '_train.csv'
+        with open(inpath, 'r') as fin:
+            reader = csv.reader(fin, delimiter=',')
+            for row in reader:
+                X.append([float(x) for x in row])
+        train_sets.append(X)
+    for solution in predictions:
+        X = []
+        inpath = dataset_name + '_' + solution + '_validate_and_test.csv'
+        with open(inpath, 'r') as fin:
+            reader = csv.reader(fin, delimiter=',')
+            for row in reader:
+                X.append([float(x) for x in row])
+        test_sets.append(X)
+    return hstack(train_sets), hstack(test_sets)

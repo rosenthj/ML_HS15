@@ -30,11 +30,13 @@ from sklearn.neighbors.classification import KNeighborsClassifier
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
 
-from core.data_handling import read_features_labels, read_features
+from core.data_handling import read_features_labels, read_features,\
+    load_previous_predictions
 from estimators.boundary_forest import BoundaryForestClassifier
 import numpy as np
 import sklearn.svm as svm
 from transformers import feature_selection as fs
+from numpy import hstack
 
 
 if __name__ == '__main__':
@@ -122,6 +124,7 @@ print('loading training data')
 #print('loading training labels')
 #Y = read_labels('train_y.csv')
 X, Y = read_features_labels(datasetTrain)
+X = hstack([X,load_previous_predictions(datasetName, ['rf','knn','logreg'])[0]])
 print('first row X: ', X[0], ' Y: ' , Y[0])
 
 print('Shape of X:', X.shape)
@@ -186,7 +189,7 @@ feature_union = FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', KNeighborsClassifier(algorithm='brute',weights='distance',p=1))])
+classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', RandomForestClassifier())])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -198,7 +201,7 @@ RMSE = make_scorer(rootMeanSquaredError, greater_is_better = False)
 categorical_accuracy_scorer = make_scorer(accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifier_searcher = GridSearchCV(classifier, dict(estimator__n_neighbors=np.arange(3,8)), cv=ShuffleSplit(2025,n_iter=100,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__n_estimators=[128]), cv=ShuffleSplit(2025,n_iter=1000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifier_searcher.fit(X, Y)
@@ -221,6 +224,7 @@ classifier.fit(X, Y)
 
 print ('loading test data')
 testX = read_features(datasetTest)
+testX = hstack([testX,load_previous_predictions(datasetName, ['rf','knn','logreg'])[1]])
 #testX = normalizer.transform(testX)
 print ('Shape of testX:', testX.shape)
 
