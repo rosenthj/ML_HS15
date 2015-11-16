@@ -30,10 +30,9 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors.classification import KNeighborsClassifier
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
-from sklearn.svm.classes import SVC
 
 from core.data_handling import read_features_labels, read_features, \
-    load_previous_predictions
+    load_previous_predictions, pearson_data
 from estimators.boundary_forest import BoundaryForestClassifier
 import numpy as np
 import sklearn.svm as svm
@@ -50,7 +49,7 @@ datasetTrain = datasetName + '_train.csv'
 datasetTest = datasetName + '_validate_and_test.csv'
 
 use_model_stacking = True
-model_stacking_models = ['rf','knn','logreg','svm']
+model_stacking_models = ['knn','svm','logreg','gbm','rf']
 
 MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
 
@@ -121,6 +120,7 @@ print('first row X: ', X[0], ' Y: ' , Y[0])
 
 print('Shape of X:', X.shape)
 print('Shape of Y:', Y.shape)
+pearson_data(datasetName, model_stacking_models)
 
 #print('normalizing!')
 #X = normalizer.fit_transform(X)
@@ -181,7 +181,7 @@ feature_union = FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', LogisticRegression())])
+classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', LogisticRegression(penalty='l1'))])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -193,7 +193,9 @@ RMSE = make_scorer(rootMeanSquaredError, greater_is_better = False)
 categorical_accuracy_scorer = make_scorer(accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifier_searcher = GridSearchCV(classifier, dict(estimator__C=[0.05,0.1,0.3,0.5,0.8],estimator__penalty=['l1']), cv=ShuffleSplit(2025,n_iter=4000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__C=[0.09]),cv=ShuffleSplit(2025,n_iter=1000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
+
+#({'estimator__C': 0.07}, 'mean:', 0.91472530864197532, 'std deviation:', 0.012816619187771739, 'm-s:', 0.90190868945420355)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifier_searcher.fit(X, Y)

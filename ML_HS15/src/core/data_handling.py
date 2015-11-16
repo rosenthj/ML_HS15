@@ -8,13 +8,15 @@ import numpy as np
 import csv
 import h5py
 from numpy import hstack
+from scipy.stats.stats import pearsonr
+from sklearn.preprocessing.data import MinMaxScaler
 
 #get labeled and unlabeled are legacy from a semisupervised problem.
 def get_unlabeled(x, y):
     return x[y[:]==-1], y[y[:]==-1]
 
 def get_labeled(x, y):
-    return x[y[:]!=-1], y[y[:]!=-1]
+    return x[y[:]!=-1], y[y[:]!=-1]    
 
 def _read_csv_features_labels(inpath):
     X = []
@@ -85,3 +87,24 @@ def load_previous_predictions(dataset_name, predictions):
                 X.append([float(x) for x in row])
         test_sets.append(X)
     return hstack(train_sets), hstack(test_sets)
+
+def pearson(A, B, scale=True):
+    correlation = 0
+    if scale:
+        scaler = MinMaxScaler()
+        A = scaler.fit_transform(A)
+        B = scaler.fit_transform(B)
+    for i in range(A.shape[1]):
+        correlation = correlation + pearsonr(A[:,i],B[:,i])[0]
+    return correlation / A.shape[1]
+
+def pearson_datapoint(dataset_name, solution_a, solution_b):
+    A = load_previous_predictions(dataset_name, [solution_a])[0]
+    B = load_previous_predictions(dataset_name, [solution_b])[0]
+    return pearson(A,B)
+
+def pearson_data(dataset_name, solutions):
+    for i in range(len(solutions)-1):
+        for j in range(i+1,len(solutions)):
+            print (solutions[i],solutions[j],pearson_datapoint(dataset_name, solutions[i], solutions[j]))
+    

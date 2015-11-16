@@ -5,18 +5,18 @@ Created on Nov 14, 2015
 '''
 from numpy import vstack, savetxt
 from sklearn.cross_validation import KFold
-from sklearn.linear_model.logistic import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
 from sklearn.svm.classes import SVC
 
 from core.data_handling import read_features_labels, read_features
+from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
 
 
 if __name__ == '__main__':
     pass
 
-solution_name = 'svm'
+solution_name = 'gbm'
 
 dataset_name = 'Sleep'
 datasetTrain = dataset_name + '_train.csv'
@@ -28,7 +28,7 @@ X, y = read_features_labels(datasetTrain)
 test_X = read_features(datasetTest)
 folds = KFold(n=X.shape[0], n_folds=10)
 
-base_estimator = SVC(C=500, gamma=0.3, kernel='rbf',decision_function_shape='ovr', probability=True)
+base_estimator = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_features=2)
 classifier = Pipeline(steps=[('prep', MinMaxScaler()),('estimator', base_estimator)])
 
 
