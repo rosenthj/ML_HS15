@@ -10,7 +10,7 @@ class FeatureDeleter:
     '''
     classdocs
     '''
-    def __init__(self, feature_id=0):
+    def __init__(self, feature_id=-1):
         self.feature_id = feature_id
         
     def get_params(self, deep=True):

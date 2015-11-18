@@ -7,16 +7,15 @@ from numpy import vstack, savetxt
 from sklearn.cross_validation import KFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
-from sklearn.svm.classes import SVC
 
 from core.data_handling import read_features_labels, read_features
-from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
+from sklearn.ensemble.forest import ExtraTreesClassifier
 
 
 if __name__ == '__main__':
     pass
 
-solution_name = 'gbm'
+solution_name = 'et'
 
 dataset_name = 'Sleep'
 datasetTrain = dataset_name + '_train.csv'
@@ -28,7 +27,7 @@ X, y = read_features_labels(datasetTrain)
 test_X = read_features(datasetTest)
 folds = KFold(n=X.shape[0], n_folds=10)
 
-base_estimator = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_features=2)
+base_estimator = ExtraTreesClassifier(n_estimators=64, criterion='gini', max_features=3)
 classifier = Pipeline(steps=[('prep', MinMaxScaler()),('estimator', base_estimator)])
 
 

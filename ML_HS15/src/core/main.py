@@ -37,6 +37,7 @@ from estimators.boundary_forest import BoundaryForestClassifier
 import numpy as np
 import sklearn.svm as svm
 from transformers import feature_selection as fs
+from transformers.feature_selection import FeatureDeleter
 
 
 if __name__ == '__main__':
@@ -48,8 +49,9 @@ datasetFmt = '%i,%i'#Output file format assumes one row per test case. For categ
 datasetTrain = datasetName + '_train.csv'
 datasetTest = datasetName + '_validate_and_test.csv'
 
+model_stacking_models = ['knn','svm','logreg','gbm','rf','et']
 use_model_stacking = True
-model_stacking_models = ['knn','svm','logreg','gbm','rf']
+remove_original_input_when_model_stacking = True
 
 MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
 
@@ -115,7 +117,10 @@ print('loading training data')
 #print('loading training labels')
 #Y = read_labels('train_y.csv')
 X, Y = read_features_labels(datasetTrain)
-if use_model_stacking: X = hstack([X,load_previous_predictions(datasetName, model_stacking_models)[0]])
+if use_model_stacking:
+    X = hstack([X,load_previous_predictions(datasetName, model_stacking_models)[0]])
+    if remove_original_input_when_model_stacking:
+        X = load_previous_predictions(datasetName, model_stacking_models)[0]
 print('first row X: ', X[0], ' Y: ' , Y[0])
 
 print('Shape of X:', X.shape)
@@ -181,7 +186,7 @@ feature_union = FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', LogisticRegression(penalty='l1'))])
+classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', LogisticRegression(C=0.2,penalty='l1'))])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -193,9 +198,11 @@ RMSE = make_scorer(rootMeanSquaredError, greater_is_better = False)
 categorical_accuracy_scorer = make_scorer(accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifier_searcher = GridSearchCV(classifier, dict(estimator__C=[0.09]),cv=ShuffleSplit(2025,n_iter=1000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__C=np.linspace(0.05, 1, 20)),cv=ShuffleSplit(2025,n_iter=1000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
 
-#({'estimator__C': 0.07}, 'mean:', 0.91472530864197532, 'std deviation:', 0.012816619187771739, 'm-s:', 0.90190868945420355)
+#({'estimator__C': 0.08}, 'mean:', 0.91457530864197534, 'std deviation:', 0.012481863935232908, 'm-s:', 0.90209344470674246)
+#({'estimator__C': 0.09}, 'mean:', 0.91438024691358022, 'std deviation:', 0.012647429379043063, 'm-s:', 0.90173281753453716)
+#({'estimator__C': 0.1}, 'mean:', 0.91426913580246916, 'std deviation:', 0.012720521567644324, 'm-s:', 0.9015486142348248)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifier_searcher.fit(X, Y)
@@ -218,7 +225,10 @@ classifier.fit(X, Y)
 
 print ('loading test data')
 testX = read_features(datasetTest)
-if use_model_stacking: testX = hstack([testX,load_previous_predictions(datasetName, model_stacking_models)[1]])
+if use_model_stacking:
+    testX = hstack([testX,load_previous_predictions(datasetName, model_stacking_models)[1]])
+    if remove_original_input_when_model_stacking:
+        testX = load_previous_predictions(datasetName, model_stacking_models)[1]
 print ('Shape of testX:', testX.shape)
 
 # print ('classifier pipe is predicting result of validation data')
