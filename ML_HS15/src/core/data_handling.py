@@ -59,6 +59,7 @@ def read_features_labels(inpath, fmt="csv"):
     if fmt=="csv": return _read_csv_features_labels(inpath)
     if fmt=="h5": return _read_h5data(inpath), _read_h5labels(inpath)
     
+    
 def read_labels(inpath, fmt="csv"):
     if fmt=="csv": return _read_csv_labels(inpath)
     if fmt=="h5": return _read_h5labels(inpath)
@@ -66,6 +67,14 @@ def read_labels(inpath, fmt="csv"):
 def read_features(inpath, fmt="csv"):
     if fmt=="csv": return _read_csv_features(inpath)
     if fmt=="h5": return _read_h5data(inpath)
+    
+def get_ids(inpath):
+    X = []
+    with open(inpath, 'r') as fin:
+        reader = csv.reader(fin, delimiter=',')
+        for row in reader:
+            X.append(int(row[0]))
+    return X
     
 def load_previous_predictions(dataset_name, predictions):
     train_sets = []

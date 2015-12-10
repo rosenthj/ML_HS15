@@ -4,8 +4,22 @@ Created on Oct 7, 2015
 @author: jonathan
 '''
 
+from array import array
+from numpy import hstack, transpose, atleast_2d
+
 import numpy as np
 import sklearn.preprocessing as skprep
+
+
+def feature_to_feature_index(X):
+    A = []
+    for j in range(X.shape[1]):
+        a = sorted(X[:,j])
+        a = [float(a.index(v)) for v in X[:,j]]
+        a = atleast_2d(a)
+        a = transpose(a)
+        A.append(a)
+    return hstack(A)
 
 class FeatureMultiplier(object):
     '''
@@ -65,6 +79,7 @@ class FeatureLogarithmic(object):
     def transform(self, X, y=None):
         if (self.feature_id != -1):
             if (isinstance(self.feature_id, list)):
+                if (self.feature_id[0] == -1): return X
                 return np.hstack((X,np.atleast_2d(np.log2(X[:,self.feature_id]))))
             return np.hstack((X,np.transpose(np.atleast_2d(np.log2(X[:,self.feature_id])))))
         return X

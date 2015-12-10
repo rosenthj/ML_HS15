@@ -30,9 +30,11 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors.classification import KNeighborsClassifier
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
+from sknn.mlp import Classifier
+from sknn.nn import Layer
 
 from core.data_handling import read_features_labels, read_features, \
-    load_previous_predictions, pearson_data
+    load_previous_predictions, pearson_data, get_ids
 from estimators.boundary_forest import BoundaryForestClassifier
 import numpy as np
 import sklearn.svm as svm
@@ -44,13 +46,13 @@ if __name__ == '__main__':
     pass
 
 
-datasetName = 'Sleep'
+datasetName = 'Cancer'
 datasetFmt = '%i,%i'#Output file format assumes one row per test case. For categorical integer values use '%i' otherwise '%f'
 datasetTrain = datasetName + '_train.csv'
 datasetTest = datasetName + '_validate_and_test.csv'
 
-model_stacking_models = ['knn','svm','logreg','gbm','rf','et']
-use_model_stacking = True
+model_stacking_models = []
+use_model_stacking = False
 remove_original_input_when_model_stacking = True
 
 MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
@@ -186,7 +188,7 @@ feature_union = FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = Pipeline(steps=[('scaler', MinMaxScaler()),('estimator', LogisticRegression(C=0.2,penalty='l1'))])
+classifier = Pipeline(steps=[('minmax', MinMaxScaler()),('estimator', LogisticRegression(C=0.25,penalty='l1'))])
 print ('Successfully prepared classifier pipeline!')
 
 
@@ -198,11 +200,7 @@ RMSE = make_scorer(rootMeanSquaredError, greater_is_better = False)
 categorical_accuracy_scorer = make_scorer(accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifier_searcher = GridSearchCV(classifier, dict(estimator__C=np.linspace(0.05, 1, 20)),cv=ShuffleSplit(2025,n_iter=1000,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=2, verbose=1)
-
-#({'estimator__C': 0.08}, 'mean:', 0.91457530864197534, 'std deviation:', 0.012481863935232908, 'm-s:', 0.90209344470674246)
-#({'estimator__C': 0.09}, 'mean:', 0.91438024691358022, 'std deviation:', 0.012647429379043063, 'm-s:', 0.90173281753453716)
-#({'estimator__C': 0.1}, 'mean:', 0.91426913580246916, 'std deviation:', 0.012720521567644324, 'm-s:', 0.9015486142348248)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__C=[0.25,0.5,0.75,1,1.25,1.5,2]),cv=ShuffleSplit(890,n_iter=50,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=1, verbose=1)
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifier_searcher.fit(X, Y)
@@ -241,5 +239,6 @@ print ('classifier pipe is predicting result of test data')
 Ypred = classifier.predict(testX)
 print('Ypred shape', Ypred.shape)
 print('predicted result', datasetName + '_result.csv')
-IDs = np.arange(2026,2701)
+IDs = np.arange(1,383)
+IDs = get_ids(datasetTest)
 np.savetxt(datasetName + '_result.csv', np.column_stack((IDs,Ypred)), delimiter=',', fmt=datasetFmt)

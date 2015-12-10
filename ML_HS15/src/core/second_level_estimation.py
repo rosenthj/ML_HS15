@@ -7,17 +7,18 @@ from numpy import vstack, savetxt
 from sklearn.cross_validation import KFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing.data import MinMaxScaler
+from sknn.nn import Layer
+from sknn.mlp import Classifier
 
 from core.data_handling import read_features_labels, read_features
-from sklearn.ensemble.forest import ExtraTreesClassifier
 
 
 if __name__ == '__main__':
     pass
 
-solution_name = 'et'
+solution_name = 'neural'
 
-dataset_name = 'Sleep'
+dataset_name = 'Cancer'
 datasetTrain = dataset_name + '_train.csv'
 datasetTest = dataset_name + '_validate_and_test.csv'
 train_solution_name = dataset_name + '_' + solution_name + '_train.csv'
@@ -25,9 +26,9 @@ test_solution_name = dataset_name + '_' + solution_name + '_validate_and_test.cs
 
 X, y = read_features_labels(datasetTrain)
 test_X = read_features(datasetTest)
-folds = KFold(n=X.shape[0], n_folds=10)
+folds = KFold(n=X.shape[0], n_folds=20)
 
-base_estimator = ExtraTreesClassifier(n_estimators=64, criterion='gini', max_features=3)
+base_estimator = Classifier(layers=[Layer("Rectifier",name="hidden0",units=10),Layer("Softmax")],n_iter=20,learning_rate=0.2 ,learning_rule="adagrad")
 classifier = Pipeline(steps=[('prep', MinMaxScaler()),('estimator', base_estimator)])
 
 
