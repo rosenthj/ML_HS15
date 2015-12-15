@@ -32,3 +32,31 @@ class FeatureDeleter:
         if (self.feature_id != -1):
             return np.delete(X, self.feature_id, 1)
         return X
+    
+class FeatureSelector:
+    '''
+    classdocs
+    '''
+    def __init__(self, feature_id=-1):
+        self.feature_id = feature_id
+        
+    def get_params(self, deep=True):
+        return {'feature_id': self.feature_id}
+    
+    def set_params(self, **params):
+        if not params: return self
+        self.feature_id = params['feature_id']
+    
+    def fit(self, X, y):
+        return
+    
+    def fit_transform(self, X, y=None):            
+        return self.transform(X,y)
+    
+    def transform(self, X, y=None):
+        if (self.feature_id != -1):
+            if (isinstance(self.feature_id, list)):
+                if (self.feature_id[0] == -1): return X
+                return X[:,self.feature_id]
+            return X[:,self.feature_id]
+        return X

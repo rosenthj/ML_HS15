@@ -6,12 +6,16 @@ Created on Aug 16, 2015
 
 from math import sqrt
 from numpy import hstack
-from sklearn.cross_validation import ShuffleSplit
 from sklearn.decomposition.kernel_pca import KernelPCA
-from sklearn.decomposition.nmf import NMF
-from sklearn.decomposition.pca import PCA, RandomizedPCA
 from sklearn.decomposition.sparse_pca import SparsePCA
 from sklearn.ensemble.bagging import BaggingClassifier
+from sklearn.grid_search import GridSearchCV
+from sklearn.linear_model.ridge import RidgeClassifier
+from sklearn.preprocessing.data import MinMaxScaler
+
+from sklearn.cross_validation import ShuffleSplit
+from sklearn.decomposition.nmf import NMF
+from sklearn.decomposition.pca import PCA, RandomizedPCA
 from sklearn.ensemble.forest import RandomForestRegressor, ExtraTreesClassifier, \
     RandomForestClassifier
 from sklearn.ensemble.gradient_boosting import GradientBoostingRegressor, \
@@ -19,17 +23,14 @@ from sklearn.ensemble.gradient_boosting import GradientBoostingRegressor, \
 from sklearn.feature_selection.univariate_selection import SelectPercentile, \
     f_classif, SelectKBest
 from sklearn.feature_selection.variance_threshold import VarianceThreshold
-from sklearn.grid_search import GridSearchCV
 from sklearn.linear_model.logistic import LogisticRegression
-from sklearn.linear_model.ridge import RidgeClassifier
 from sklearn.linear_model.stochastic_gradient import SGDClassifier
-from sklearn.metrics.classification import accuracy_score
-from sklearn.metrics.regression import mean_squared_error
+from sklearn.metrics.metrics import accuracy_score
+from sklearn.metrics.metrics import mean_squared_error
 from sklearn.metrics.scorer import make_scorer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors.classification import KNeighborsClassifier
 from sklearn.pipeline import FeatureUnion, Pipeline
-from sklearn.preprocessing.data import MinMaxScaler
 from sknn.mlp import Classifier
 from sknn.nn import Layer
 
@@ -39,7 +40,7 @@ from estimators.boundary_forest import BoundaryForestClassifier
 import numpy as np
 import sklearn.svm as svm
 from transformers import feature_selection as fs
-from transformers.feature_selection import FeatureDeleter
+from transformers.feature_selection import FeatureSelector
 
 
 if __name__ == '__main__':
@@ -51,8 +52,9 @@ datasetFmt = '%i,%i'#Output file format assumes one row per test case. For categ
 datasetTrain = datasetName + '_train.csv'
 datasetTest = datasetName + '_validate_and_test.csv'
 
-model_stacking_models = []
-use_model_stacking = False
+#'rf','ridge','et','nn','log','gbc','bagging','svc',
+model_stacking_models = ['rfp','etp','nnp','logp','gbcp','baggingp','svcp']
+use_model_stacking = True
 remove_original_input_when_model_stacking = True
 
 MonthsTable = [0,3,3,6,1,4,6,2,5,0,3,5]
@@ -174,9 +176,9 @@ linear_support_vector_classifier = svm.LinearSVC(dual=False)
 nearest_neighbor_classifier = KNeighborsClassifier()
 extra_trees_classifier = ExtraTreesClassifier(n_estimators=256)
 bagging_classifier = BaggingClassifier(base_estimator=GradientBoostingClassifier(n_estimators=200,max_features=4), max_features=0.5,n_jobs=2, verbose=1)
-gradient_boosting_classifier = GradientBoostingClassifier(n_estimators=30, max_features=4, learning_rate=0.1, verbose=0)
+gradient_boosting_classifier = GradientBoostingClassifier(n_estimators=200, max_features=4, learning_rate=0.3, verbose=0)
 random_forest_classifier = RandomForestClassifier(n_estimators=2)
-logistic_regression = LogisticRegression(C=80)
+logistic_regression = LogisticRegression(C=0.5)
 ridge_classifier = RidgeClassifier(alpha=0.1, solver='svd')
 bayes = MultinomialNB()
 sgd = SGDClassifier()
@@ -188,9 +190,9 @@ feature_union = FeatureUnion(transformer_list=[('PCA', pca)])
 
 
 # PIPE DEFINITION
-classifier = Pipeline(steps=[('minmax', MinMaxScaler()),('estimator', LogisticRegression(C=0.25,penalty='l1'))])
+classifier = Pipeline(steps=[('selector', FeatureSelector()),('minmax', MinMaxScaler()),('estimator', logistic_regression)])
 print ('Successfully prepared classifier pipeline!')
-
+#
 
 #X = np.vstack((X,np.roll(X,1),np.roll(X,-1),np.roll(X,28),np.roll(X,-28)))
 #Y = np.hstack((Y,Y,Y,Y,Y))
@@ -200,7 +202,8 @@ RMSE = make_scorer(rootMeanSquaredError, greater_is_better = False)
 categorical_accuracy_scorer = make_scorer(accuracy_score, greater_is_better = True)
 
 # GRID DEFINITION
-classifier_searcher = GridSearchCV(classifier, dict(estimator__C=[0.25,0.5,0.75,1,1.25,1.5,2]),cv=ShuffleSplit(890,n_iter=50,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=1, verbose=1)
+classifier_searcher = GridSearchCV(classifier, dict(estimator__C=[0.25,0.5,1,2,4,8,100]),cv=ShuffleSplit(890,n_iter=50,test_size=0.2),scoring=categorical_accuracy_scorer, n_jobs=1, verbose=1)
+
 
 print ('fitting classifier pipeline grid on training data subset for accuracy estimate')
 classifier_searcher.fit(X, Y)
@@ -239,6 +242,5 @@ print ('classifier pipe is predicting result of test data')
 Ypred = classifier.predict(testX)
 print('Ypred shape', Ypred.shape)
 print('predicted result', datasetName + '_result.csv')
-IDs = np.arange(1,383)
 IDs = get_ids(datasetTest)
 np.savetxt(datasetName + '_result.csv', np.column_stack((IDs,Ypred)), delimiter=',', fmt=datasetFmt)
